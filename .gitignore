@@ -1,0 +1,6 @@
+# Ignoriši Python keš i virtuelna okruženja
+__pycache__/
+.venv/
+venv/
+*.pyc
+.vscode/
