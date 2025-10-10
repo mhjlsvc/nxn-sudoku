@@ -3,7 +3,7 @@ import numpy as np
 
 if __name__ == "__main__":
 
-    # 9x9 Sudoku za demonstraciju
+    
     puzzle_9x9 = [
         [5, 3, 0, 0, 7, 0, 0, 0, 0],
         [6, 0, 0, 1, 9, 5, 0, 0, 0],
@@ -18,11 +18,29 @@ if __name__ == "__main__":
     
     solver = SudokuSolver(puzzle_9x9)
     
-    # Prikaz početnog stanja
+    
     solver.display_grid("Početno stanje Sudokua (Ulaz)")
     
-    # Prikaz maske fiksnih polja
+    
     print("\nFiksirana maska (True = fiksno, False = promenljivo):")
     print(solver.fixed_mask)
+
+    np.random.seed(42) 
+    possible_values = np.arange(1, solver.N + 1)
+
+    for i in range(solver.N):
+        for j in range(solver.N):
+            if not solver.fixed_mask[i, j]:
+                solver.grid[i, j] = np.random.choice(possible_values)
+
+    solver.display_grid("Nasumicna inicijalizacija")
+
+    total_conflicts = solver.objective_f()
+
+    print(f"\nUkupno konflikata (objective_f): {total_conflicts}")
+    
+    print(f"Konflikti u redovima: {solver._row_conflicts()}")
+    print(f"Konflikti u kolonama: {solver._col_conflicts()}")
+    print(f"Konflikti u blokovima: {solver._block_conflicts()}")
 
     
