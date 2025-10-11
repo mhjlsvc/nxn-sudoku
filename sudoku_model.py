@@ -93,3 +93,120 @@ class SudokuSolver:
         total_con = con_row + con_col + con_block
 
         return total_con
+    
+    def is_valid(self) -> bool:
+        if np.any((self.grid < 1) | (self.grid > self.N)): 
+            return False
+        
+        return self.objective_f() == 0
+
+    def get_conflicts(self):
+        conlficts = []
+
+        for i in range(self.N):
+            for j in range(self.N):
+                v = self.grid[i,j]
+                if v == 0:
+                    continue
+                
+                con_row = np.count_nonzero(self.grid[i, :] == v) > 1  
+                con_col = np.count_nonzero(self.grid[:, j] == v) > 1
+
+                ik = i // self.K 
+                jk = j // self.K
+
+                ik_start = ik * self.K
+                ik_end = (ik + 1 ) * self.K
+                jk_start = jk * self.K
+                jk_end = (jk + 1 ) * self.K
+
+                block = self.grid[ik_start:ik_end, jk_start:jk_end]
+                con_block = np.count_nonzero(block == v) > 1
+
+                if con_row or con_col or con_block:
+                    conlficts.append((i, j))
+
+        return conlficts
+    
+    def _placment_cost(self, i:int, j:int, val:int ) -> int:
+        curr = self.grid[i, j]
+        self.grid[i, j] = val
+
+        row_duplicates = max(0, np.count_nonzero(self.grid[i, :] == val ) - 1) 
+        col_duplicates = max(0, np.count_nonzero(self.grid[:, j] == val ) - 1)
+
+        cost = row_duplicates + col_duplicates
+
+        self.grid[i, j] = curr
+
+        return cost
+
+    def _fill_block_greedy(self, ik:int, jk:int, rand: np.random.Generator ) -> None:
+        if rand is None:
+            rand = np.random._rng()
+
+        k = self.K
+        ik_start = ik * k
+        ik_end = (ik + 1) * k
+        jk_start = jk * k
+        jk_end = (jk + 1) * k
+
+        block = self.grid[ik_start:ik_end,jk_start:jk_end]
+
+        curr = block[block > 0] 
+        all = np.arange(1, self.N + 1)
+
+        missing = []
+
+        for val in all:
+            count_val = np.count_nonzero(curr == val)
+
+            if count_val == 0:
+                missing.append(val)
+
+        empty = []
+
+        for i in range(ik_start, ik_end): 
+            for j in range(jk_start, jk_end):
+                if self.grid[i, j] == 0:
+                    empty.append((i, j))
+
+        if not missing or not empty:
+            return
+        
+        rand.shuffle(missing) 
+        rand.shuffle(empty)
+
+        for val in missing:
+            best_pos = None
+            best_cost = None
+
+            for(i, j) in empty:
+                if self.grid[i, j] != 0:
+                    continue
+
+                cost = self._placment_cost(i, j, val)
+
+                if ( best_pos is None ) or ( cost < best_cost ) or ( cost == best_cost and rand.random() < 0.5 ):
+                    best_pos = (i, j)
+                    best_cost = cost
+
+            if best_pos is not None:
+                i, j = best_pos
+                self.grid[i, j]  = val
+                empty.remove((i, j))
+                if not empty:
+                     break
+                
+
+    def greedy_init(self, passes: int = 2, seed: int | None = None ) -> None:
+
+        rand = np.random.default_rng(seed)
+
+        for _ in range(passes):
+            for ik in range(self.K):
+                for jk in range(self.K):
+                    self._fill_block_greedy(ik = ik, jk= jk, rand = rand)
+
+
+
