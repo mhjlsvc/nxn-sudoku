@@ -1,6 +1,19 @@
-# Ignoriši Python keš i virtuelna okruženja
 __pycache__/
-.venv/
-venv/
 *.pyc
+*.pyo
+*.pyd
+
+venv/
+env/
+.venv/
+
+.DS_Store
+Thumbs.db
+
 .vscode/
+.idea/
+
+*.log
+*.tmp
+
+*.ipynb_checkpoints/
