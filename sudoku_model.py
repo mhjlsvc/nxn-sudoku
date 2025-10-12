@@ -232,3 +232,26 @@ class ILS_CP(SudokuSolver):
 
         self._initialize_auxiliary_structures()
 
+    def _initialize_auxiliary_structures(self):
+        
+        for i in range(self.N):
+            for j in range(self.N):
+                v = self.grid[i, j]
+                if v != 0:
+                    self.row_counts[i, v] += 1
+                    self.col_counts[j, v] += 1
+        
+        total_missing = 0
+        for i in range(self.N):
+
+            missing_row = sum(1 for v in range(1, self.N + 1) if self.row_counts[i, v] == 0)
+            self.row_missing[i] = missing_row
+            total_missing += missing_row
+            
+            missing_col = sum(1 for v in range(1, self.N + 1) if self.col_counts[i, v] == 0)
+            self.col_missing[i] = missing_col
+            total_missing += missing_col
+
+        self.current_cost = total_missing 
+        self.best_cost = self.current_cost
+        self.best_grid = self.grid.copy()
