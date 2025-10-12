@@ -1,4 +1,7 @@
 import numpy as np
+from collections import deque
+from typing import Set, Tuple, Optional
+import random
 
 class SudokuSolver:
     
@@ -208,5 +211,24 @@ class SudokuSolver:
                 for jk in range(self.K):
                     self._fill_block_greedy(ik = ik, jk= jk, rand = rand)
 
+class ILS_CP(SudokuSolver):
 
+    def __init__(self, puzzle, seed: int | None = None):
+        super().__init__(puzzle)
+        
+        if seed is not None:
+            self.random = random.Random(seed)
+        else:
+            self.random = random.Random()
+        
+        self.current_cost = 0
+        self.best_cost = float('inf')
+        self.best_grid = self.grid.copy()
+        
+        self.row_counts = np.zeros((self.N, self.N + 1), dtype=int)
+        self.col_counts = np.zeros((self.N, self.N + 1), dtype=int)
+        self.row_missing = np.zeros(self.N, dtype=int)
+        self.col_missing = np.zeros(self.N, dtype=int)
+
+        self._initialize_auxiliary_structures()
 
