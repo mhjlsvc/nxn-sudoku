@@ -1,6 +1,8 @@
 import numpy as np
 from collections import deque
 from typing import Set, Tuple, Optional
+from ortools.sat.python import cp_model
+from ortools.sat.python.cp_model import OPTIMAL, FEASIBLE
 import random
 
 class SudokuSolver:
@@ -394,3 +396,143 @@ class ILS_CP(SudokuSolver):
 
             if self.current_cost == 0:
                 return
+            
+class SudokuCP(SudokuSolver):
+    def __init__(self, puzzle, seed = None):
+        super().__init__(puzzle)
+
+        self.seed = seed
+        self.model = None
+        self.cp_vars = None
+        self.cp_solver = None
+
+    def _build_cp_model(self):
+        self.model = cp_model.CpModel()
+        N = self.N
+        K = self.K
+
+        x = []
+        for i in range(N):
+            row = []
+            for j in range(N):
+                var = self.model.NewIntVar(1, N, f"x[{i},{j}]")
+                row.append(var)
+
+            x.append(row)
+
+        
+        for i in range(N):
+            self.model.AddAllDifferent(x[i])
+
+        for j in range(N):
+            col = []
+            for i in range(N):
+                col.append(x[i][j])
+            
+            self.model.AddAllDifferent(col)
+
+        for ik in range(K):
+            for jk in range(K):
+                ik_start = ik * K
+                ik_end = (ik + 1) * K
+                jk_start = jk * K
+                jk_end = (jk + 1) * K 
+
+                cells = []
+                for i in range(ik_start, ik_end):
+                    for j in range(jk_start, jk_end):
+                        cells.append(x[i][j])
+
+                self.model.AddAllDifferent(cells)
+
+        for i in range(N):
+            for j in range(N):
+                if self.grid[i, j] != 0:
+                    self.model.Add(x[i][j] == int(self.grid[i, j]))
+
+        self.cp_vars = x
+        self.cp_solver = cp_model.CpSolver()
+
+    def _is_cell_nonconflicting(self, i: int, j: int ) ->bool:
+        val = int(self.grid[i, j])
+
+        if val == 0:
+            return False
+        
+        if np.count_nonzero(self.grid[i, :] == val) > 1:
+            return False
+        
+        if np.count_nonzero(self.grid[:, j] == val ) > 1:
+            return False
+        
+        ik = i // self.K
+        jk = j // self.K
+
+        ik_start = ik * self.K
+        ik_end = (ik + 1) * self.K
+        jk_start = jk * self.K
+        jk_end = (jk + 1) * self.K
+
+        block = self.grid[ik_start:ik_end, jk_start:jk_end]
+
+        if np.count_nonzero(block == val) > 1:
+            return False
+        
+        return True
+    
+    def cp_refinement(self, time_limit: float | None = 10.0, fix_noncon: bool = True, hints: bool = True, log_search: bool = False):
+        if self.model is None or self.cp_vars is None or self.cp_solver is None:
+            self._build_cp_model()
+
+        model = self.model
+        x = self.cp_vars
+        solver = self.cp_solver
+        N = self.N
+
+       
+        for i in range(N):
+            for j in range(N):
+                if self.fixed_mask[i, j] and self.grid[i, j] != 0:
+                    model.Add(x[i][j] == int(self.grid[i, j]))
+
+        
+        if fix_noncon:
+            for i in range(N):
+                for j in range(N):
+                    if not self.fixed_mask[i, j] and self.grid[i, j] != 0:
+                        if self._is_cell_nonconflicting(i, j):
+                            model.Add(x[i][j] == int(self.grid[i, j]))
+
+        if hints:
+            for i in range(N):
+                for j in range(N):
+                    val = int(self.grid[i, j])
+                    if 1 <= val <= N:
+                        model.AddHint(x[i][j], val)
+
+        if time_limit is not None:
+            solver.parameters.max_time_in_seconds = float(time_limit)
+        
+        solver.parameters.log_search_progress = bool(log_search)
+
+        status = solver.Solve(model)
+
+        if status in (OPTIMAL, FEASIBLE):
+            for i in range(N):
+                for j in range(N):
+                    self.grid[i, j] = int(solver.Value(x[i][j]))
+
+
+        return status
+
+
+
+
+        
+
+
+
+
+
+
+                

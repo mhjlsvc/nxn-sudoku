@@ -1,4 +1,5 @@
 from sudoku_model import ILS_CP
+from sudoku_model import SudokuCP
 import numpy as np
 
 if __name__ == "__main__":
@@ -66,4 +67,10 @@ if __name__ == "__main__":
     print(f"Najbolja postignuta cena: {solver.best_cost}")
     print(f"Da li je trenutno rešenje validno? {solver.is_valid()}")
 
-    
+    cp_solver = SudokuCP(puzzle_9x9, seed = 42)
+    cp_solver._build_cp_model()
+
+    print("\nBroj promenljivih", cp_solver.N**2)
+
+    status = cp_solver.cp_refinement(time_limit=10.0, fix_noncon=True, hints=True)
+    cp_solver.display_grid()
