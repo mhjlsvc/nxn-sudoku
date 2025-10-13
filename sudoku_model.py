@@ -13,13 +13,11 @@ class SudokuSolver:
         self.N = self.grid.shape[0]  
         self.K = int(np.sqrt(self.N)) 
 
-        
         self.fixed_mask = (self.grid != 0) 
 
     def display_grid(self, title="Trenutna Sudoku ploča"):
         
         print(f"\n--- {title} (Veličina: {self.N}x{self.N}) ---")
-        
         
         def print_separator():
             line = "+---" * self.K 
@@ -419,7 +417,6 @@ class SudokuCP(SudokuSolver):
                 row.append(var)
 
             x.append(row)
-
         
         for i in range(N):
             self.model.AddAllDifferent(x[i])
@@ -489,7 +486,6 @@ class SudokuCP(SudokuSolver):
         solver = self.cp_solver
         N = self.N
 
-       
         for i in range(N):
             for j in range(N):
                 if self.fixed_mask[i, j] and self.grid[i, j] != 0:
@@ -521,7 +517,6 @@ class SudokuCP(SudokuSolver):
             for i in range(N):
                 for j in range(N):
                     self.grid[i, j] = int(solver.Value(x[i][j]))
-
 
         return status
 

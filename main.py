@@ -74,3 +74,7 @@ if __name__ == "__main__":
 
     status = cp_solver.cp_refinement(time_limit=10.0, fix_noncon=True, hints=True)
     cp_solver.display_grid()
+
+    cp_final_cost = cp_solver.objective_f()
+    print(f"Konačna CP cena konflikata: {cp_final_cost}")
+    print(f"Da li je rešenje validno? {cp_solver.is_valid()}")
