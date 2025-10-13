@@ -255,3 +255,66 @@ class ILS_CP(SudokuSolver):
         self.current_cost = total_missing 
         self.best_cost = self.current_cost
         self.best_grid = self.grid.copy()
+    
+    def _subgrid_cells(self, bi: int, bj: int) -> list[Tuple[int, int]]:
+
+        cells = []
+        i_start, i_end = bi * self.K, (bi + 1) * self.K
+        j_start, j_end = bj * self.K, (bj + 1) * self.K
+        
+        for i in range(i_start, i_end):
+            for j in range(j_start, j_end):
+                if not self.fixed_mask[i, j]:
+                    cells.append((i, j))
+        return cells
+    
+    def _delta_cost_swap(self, i: int, j: int, ii: int, jj: int) -> int:
+      
+        v1, v2 = self.grid[i, j], self.grid[ii, jj]
+        delta = 0
+
+        counts = self.row_counts[i]
+        if counts[v1] == 1: delta += 1 
+        if counts[v2] == 0: delta -= 1 
+
+        counts = self.row_counts[ii]
+        if counts[v2] == 1: delta += 1
+        if counts[v1] == 0: delta -= 1  
+
+        counts = self.col_counts[j]
+        if counts[v1] == 1: delta += 1
+        if counts[v2] == 0: delta -= 1
+
+        counts = self.col_counts[jj]
+        if counts[v2] == 1: delta += 1
+        if counts[v1] == 0: delta -= 1
+
+        return delta
+    
+    def _best_swap_in_subgrid(self, i: int, j: int, tabu: Set[Tuple[Tuple[int,int], Tuple[int,int]]],  aspiration_cost: int) -> Tuple[Optional[Tuple[int,int,int,int]], int, bool]:
+
+        bi, bj = i // self.K, j // self.K
+        cells = self._subgrid_cells(bi, bj)
+        best = None
+        best_delta = None
+        best_tabu_aspire = False
+
+        for ii, jj in cells:
+            if (ii == i and jj == j): continue
+            if self.fixed_mask[ii, jj] or self.fixed_mask[i, j]: continue
+                
+            swap_key = tuple(sorted(((i, j), (ii, jj))))
+            is_tabu = swap_key in tabu
+
+            d = self._delta_cost_swap(i, j, ii, jj)
+            allow = is_tabu and (self.current_cost + d < aspiration_cost)
+
+            if (best is None) or (d < best_delta) or (d == best_delta and self.random.random() < 0.5):
+                if not is_tabu or allow:
+                    best = (i, j, ii, jj)
+                    best_delta = d
+                    best_tabu_aspire = allow
+
+        if best is None:
+            return None, 0, False
+        return best, best_delta, best_tabu_aspire
