@@ -1,4 +1,4 @@
-from sudoku_model import SudokuSolver
+from sudoku_model import ILS_CP
 import numpy as np
 
 if __name__ == "__main__":
@@ -16,16 +16,16 @@ if __name__ == "__main__":
         [0, 0, 0, 0, 8, 0, 0, 7, 9]
     ]
     
-    solver = SudokuSolver(puzzle_9x9)
+    solver = ILS_CP(puzzle_9x9, seed=42)
     
     
     solver.display_grid("Početno stanje Sudokua (Ulaz)")
     
-    
+    """
     print("\nFiksirana maska (True = fiksno, False = promenljivo):")
     print(solver.fixed_mask)
 
-    """
+    
     np.random.seed(42) 
     possible_values = np.arange(1, solver.N + 1)
 
@@ -39,7 +39,7 @@ if __name__ == "__main__":
 
     solver.greedy_init(passes = 2, seed = 42 )
     solver.display_grid("Posle inicijalizacije")
-
+    """
     total_conflicts = solver.objective_f()
 
     print(f"\nUkupno konflikata (objective_f): {total_conflicts}")
@@ -50,5 +50,20 @@ if __name__ == "__main__":
 
     pos_conflicts = solver.get_conflicts()
     print(f"Pozicija konflikata:{pos_conflicts}")
+    """
+
+    print(f"\nPočetna ILS cena: {solver.current_cost}")
+
+    solver._min_conflicts_with_tabu(
+        iteration_limit=5000, 
+        acceptance_prob=0.01, 
+        tabu_size=10
+    )
+
+    solver.display_grid("Nakon Lokalnog Pretraživanja:")
+
+    print(f"Konačna ILS cena: {solver.current_cost}")
+    print(f"Najbolja postignuta cena: {solver.best_cost}")
+    print(f"Da li je trenutno rešenje validno? {solver.is_valid()}")
 
     

@@ -318,3 +318,79 @@ class ILS_CP(SudokuSolver):
         if best is None:
             return None, 0, False
         return best, best_delta, best_tabu_aspire
+    
+    def _cell_in_conflict(self, i: int, j: int) -> bool:
+
+        v = self.grid[i, j]
+        if v == 0: return False
+        return self.row_counts[i, v] > 1 or self.col_counts[j, v] > 1
+    
+    def _apply_swap(self, i: int, j: int, ii: int, jj: int):
+
+        v1, v2 = self.grid[i, j], self.grid[ii, jj]
+
+        self.row_counts[i, v1] -= 1
+        self.row_counts[i, v2] += 1
+        self.row_counts[ii, v2] -= 1
+        self.row_counts[ii, v1] += 1
+        self.col_counts[j, v1] -= 1
+        self.col_counts[j, v2] += 1
+        self.col_counts[jj, v2] -= 1
+        self.col_counts[jj, v1] += 1
+
+        self.row_missing[i] = sum(1 for v in range(1, self.N+1) if self.row_counts[i, v] == 0)
+        self.row_missing[ii] = sum(1 for v in range(1, self.N+1) if self.row_counts[ii, v] == 0)
+        self.col_missing[j] = sum(1 for v in range(1, self.N+1) if self.col_counts[j, v] == 0)
+        self.col_missing[jj] = sum(1 for v in range(1, self.N+1) if self.col_counts[jj, v] == 0)
+
+        self.grid[i, j], self.grid[ii, jj] = v2, v1
+
+        self.current_cost = np.sum(self.row_missing) + np.sum(self.col_missing)
+        
+        if self.current_cost < self.best_cost:
+            self.best_cost = self.current_cost
+            self.best_grid = self.grid.copy()
+
+    def _min_conflicts_with_tabu(self, iteration_limit: int, acceptance_prob: float, tabu_size: int) -> None:
+
+        tabu = deque([], maxlen=tabu_size)
+        tabu_set = set()
+
+        def add_tabu(a: Tuple[int, int], b: Tuple[int, int]):
+            key = tuple(sorted((a, b)))
+            tabu.append(key)
+            tabu_set.clear()
+            tabu_set.update(tabu)
+
+        for _ in range(iteration_limit):
+            if self.current_cost == 0:
+                return
+
+            chosen = None
+            for _t in range(50):
+                i = self.random.randrange(self.N)
+                j = self.random.randrange(self.N)
+                if not self.fixed_mask[i, j] and self._cell_in_conflict(i, j):
+                    chosen = (i, j)
+                    break
+            
+            if chosen is None:
+                unfixed = [(i, j) for i in range(self.N) for j in range(self.N) if not self.fixed_mask[i, j]]
+                if not unfixed: return
+                chosen = self.random.choice(unfixed)
+            i, j = chosen
+
+            best_move, delta, asp = self._best_swap_in_subgrid(i, j, tabu_set, self.best_cost)
+            if best_move is None: continue
+
+            new_cost = self.current_cost + delta
+            
+            if new_cost < self.current_cost or self.random.random() < acceptance_prob or asp:
+                i, j, ii, jj = best_move 
+                
+                self._apply_swap(i, j, ii, jj) 
+                
+                add_tabu((i, j), (ii, jj))
+
+            if self.current_cost == 0:
+                return
