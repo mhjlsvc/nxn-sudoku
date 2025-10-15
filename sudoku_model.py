@@ -4,6 +4,7 @@ from typing import Set, Tuple, Optional
 from ortools.sat.python import cp_model
 from ortools.sat.python.cp_model import OPTIMAL, FEASIBLE
 import random
+import time, math
 
 class SudokuSolver:
     
@@ -38,7 +39,6 @@ class SudokuSolver:
             print(row_str)
             
         print_separator()
-
         
     def _line_conflicts(self, line):
 
@@ -103,33 +103,38 @@ class SudokuSolver:
         
         return self.objective_f() == 0
 
-    def get_conflicts(self):
-        conlficts = []
+    # def get_conflicting_cells(self) -> Set[Tuple[int, int]]: #Napravljena druga fja koja radi ovaj posao, ali mozda zatreba ova
+  
+    #     N = self.N
+    #     conflicting_cells = set()
 
-        for i in range(self.N):
-            for j in range(self.N):
-                v = self.grid[i,j]
-                if v == 0:
-                    continue
+    #     for i in range(N):
+    #         for j in range(N):
+    #             val = self.grid[i, j]
                 
-                con_row = np.count_nonzero(self.grid[i, :] == v) > 1  
-                con_col = np.count_nonzero(self.grid[:, j] == v) > 1
+    #             if val == 0: continue
+                
+    #             is_conflicting = False
+                                
+    #             if np.count_nonzero(self.grid[i, :] == val) > 1:
+    #                 is_conflicting = True
+                
+    #             if np.count_nonzero(self.grid[:, j] == val) > 1:
+    #                 is_conflicting = True
 
-                ik = i // self.K 
-                jk = j // self.K
+    #             ik_start = (i // self.K) * self.K
+    #             ik_end = ik_start + self.K
+    #             jk_start = (j // self.K) * self.K
+    #             jk_end = jk_start + self.K
+    #             block = self.grid[ik_start:ik_end, jk_start:jk_end]
+                
+    #             if np.count_nonzero(block == val) > 1:
+    #                 is_conflicting = True
+                
+    #             if is_conflicting and not self.fixed_mask[i, j]:
+    #                 conflicting_cells.add((i, j))
 
-                ik_start = ik * self.K
-                ik_end = (ik + 1 ) * self.K
-                jk_start = jk * self.K
-                jk_end = (jk + 1 ) * self.K
-
-                block = self.grid[ik_start:ik_end, jk_start:jk_end]
-                con_block = np.count_nonzero(block == v) > 1
-
-                if con_row or con_col or con_block:
-                    conlficts.append((i, j))
-
-        return conlficts
+    #     return conflicting_cells
     
     def _placment_cost(self, i:int, j:int, val:int ) -> int:
         curr = self.grid[i, j]
@@ -201,7 +206,6 @@ class SudokuSolver:
                 if not empty:
                      break
                 
-
     def greedy_init(self, passes: int = 2, seed: int | None = None ) -> None:
 
         rand = np.random.default_rng(seed)
@@ -211,28 +215,81 @@ class SudokuSolver:
                 for jk in range(self.K):
                     self._fill_block_greedy(ik = ik, jk= jk, rand = rand)
 
+    def _calculate_delta_cost(self, i: int, j: int, new_value: int) -> int: # Za LS
+        
+        N = self.N
+        K = self.K
+        current_value = self.grid[i, j]
+
+        if current_value == new_value:
+            return 0 
+
+        old_cost = 0
+
+        if np.count_nonzero(self.grid[i, :] == current_value) > 1:
+            old_cost += (np.count_nonzero(self.grid[i, :] == current_value) - 1)
+        
+        if np.count_nonzero(self.grid[:, j] == current_value) > 1:
+            old_cost += (np.count_nonzero(self.grid[:, j] == current_value) - 1)
+        
+        ik_start = (i // K) * K
+        ik_end = ik_start + K
+        jk_start = (j // K) * K
+        jk_end = jk_start + K
+        block = self.grid[ik_start:ik_end, jk_start:jk_end]
+        if np.count_nonzero(block == current_value) > 1:
+            old_cost += (np.count_nonzero(block == current_value) - 1)
+
+        self.grid[i, j] = new_value
+        new_cost = 0
+
+        if np.count_nonzero(self.grid[i, :] == new_value) > 1:
+            new_cost += (np.count_nonzero(self.grid[i, :] == new_value) - 1)
+        
+        if np.count_nonzero(self.grid[:, j] == new_value) > 1:
+            new_cost += (np.count_nonzero(self.grid[:, j] == new_value) - 1)
+        
+        new_block = self.grid[ik_start:ik_end, jk_start:jk_end]
+        if np.count_nonzero(new_block == new_value) > 1:
+            new_cost += (np.count_nonzero(new_block == new_value) - 1)
+
+        self.grid[i, j] = current_value
+        
+        delta = new_cost - old_cost
+
+        return delta
+
 class ILS_CP(SudokuSolver):
 
-    def __init__(self, puzzle, seed: int | None = None):
-        super().__init__(puzzle)
+    def __init__(self, puzzle, seed: int = 42):
         
-        if seed is not None:
-            self.random = random.Random(seed)
-        else:
-            self.random = random.Random()
+        super().__init__(puzzle) 
         
-        self.current_cost = 0
-        self.best_cost = float('inf')
+        import numpy as np
+        self.random = np.random.default_rng(seed)
+
+        self.tabu_list = {}
+        self.current_cost = self.objective_f() 
+        self.best_cost = self.current_cost
         self.best_grid = self.grid.copy()
         
         self.row_counts = np.zeros((self.N, self.N + 1), dtype=int)
         self.col_counts = np.zeros((self.N, self.N + 1), dtype=int)
         self.row_missing = np.zeros(self.N, dtype=int)
         self.col_missing = np.zeros(self.N, dtype=int)
-
-        self._initialize_auxiliary_structures()
+        
+        self.model = None
+        self.cp_vars = None
+        self.cp_solver = None
+        
+        self.current_cost = self.objective_f()
+        self.best_cost = self.current_cost
+        self.best_grid = self.grid.copy()
 
     def _initialize_auxiliary_structures(self):
+        
+        self.row_counts.fill(0)
+        self.col_counts.fill(0)
         
         for i in range(self.N):
             for j in range(self.N):
@@ -241,20 +298,9 @@ class ILS_CP(SudokuSolver):
                     self.row_counts[i, v] += 1
                     self.col_counts[j, v] += 1
         
-        total_missing = 0
         for i in range(self.N):
-
-            missing_row = sum(1 for v in range(1, self.N + 1) if self.row_counts[i, v] == 0)
-            self.row_missing[i] = missing_row
-            total_missing += missing_row
-            
-            missing_col = sum(1 for v in range(1, self.N + 1) if self.col_counts[i, v] == 0)
-            self.col_missing[i] = missing_col
-            total_missing += missing_col
-
-        self.current_cost = total_missing 
-        self.best_cost = self.current_cost
-        self.best_grid = self.grid.copy()
+            self.row_missing[i] = sum(1 for v in range(1, self.N + 1) if self.row_counts[i, v] == 0)
+            self.col_missing[i] = sum(1 for v in range(1, self.N + 1) if self.col_counts[i, v] == 0)
     
     def _subgrid_cells(self, bi: int, bj: int) -> list[Tuple[int, int]]:
 
@@ -362,14 +408,19 @@ class ILS_CP(SudokuSolver):
             tabu_set.clear()
             tabu_set.update(tabu)
 
+        for _t in range(50):
+            i = self.random.integers(0, self.N) 
+            j = self.random.integers(0, self.N)
+    
         for _ in range(iteration_limit):
             if self.current_cost == 0:
                 return
 
             chosen = None
-            for _t in range(50):
-                i = self.random.randrange(self.N)
-                j = self.random.randrange(self.N)
+            for _t in range(50):                
+                i = self.random.integers(0, self.N) 
+                j = self.random.integers(0, self.N) 
+                
                 if not self.fixed_mask[i, j] and self._cell_in_conflict(i, j):
                     chosen = (i, j)
                     break
@@ -518,16 +569,4 @@ class SudokuCP(SudokuSolver):
                 for j in range(N):
                     self.grid[i, j] = int(solver.Value(x[i][j]))
 
-        return status
-
-
-
-
-        
-
-
-
-
-
-
-                
+        return status                
