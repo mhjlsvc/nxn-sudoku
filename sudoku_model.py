@@ -7,49 +7,49 @@ import random
 import time, math
 
 class SudokuSolver:
-    
-    def __init__(self, puzzle):
-       
-        self.grid = np.array(puzzle, dtype=int)
-        self.N = self.grid.shape[0]  
-        self.K = int(np.sqrt(self.N)) 
 
-        self.fixed_mask = (self.grid != 0) 
+    def __init__(self, puzzle):
+
+        self.grid = np.array(puzzle, dtype=int)
+        self.N = self.grid.shape[0]
+        self.K = int(np.sqrt(self.N))
+
+        self.fixed_mask = (self.grid != 0)
 
     def display_grid(self, title="Trenutna Sudoku ploča"):
-        
+
         print(f"\n--- {title} (Veličina: {self.N}x{self.N}) ---")
-        
+
         def print_separator():
-            line = "+---" * self.K 
+            line = "+---" * self.K
             print(line * self.K + "+")
 
-        
+
         for i in range(self.N):
             if i % self.K == 0:
                 print_separator()
-            
+
             row_str = "|"
             for j in range(self.N):
                 val = str(self.grid[i, j]) if self.grid[i, j] != 0 else "."
-                
+
                 row_str += f" {val} "
                 if (j + 1) % self.K == 0:
                     row_str += "|"
             print(row_str)
-            
+
         print_separator()
-        
+
     def _line_conflicts(self, line):
 
-        vals = line[(line > 0)]  
+        vals = line[(line > 0)]
 
         if len(vals) == 0:
             return 0
-        
+
         unique, counts = np.unique(vals, return_counts = True)
-        return int(np.sum(counts[counts > 1] - 1) ) 
-    
+        return int(np.sum(counts[counts > 1] - 1) )
+
     def _row_conflicts(self):
 
         total = 0
@@ -58,9 +58,9 @@ class SudokuSolver:
             row = self.grid[i,:]
             conflicts = self._line_conflicts(row)
             total += conflicts
-        
+
         return total
-    
+
     def _col_conflicts(self):
 
         total = 0
@@ -69,9 +69,9 @@ class SudokuSolver:
             col = self.grid[:,j]
             conflicts = self._line_conflicts(col)
             total += conflicts
-        
+
         return total
-    
+
     def _block_conflicts(self):
 
         total = 0
@@ -82,13 +82,13 @@ class SudokuSolver:
                 i_end = (i + 1) * self.K
                 j_start = j * self.K
                 j_end = (j + 1) * self.K
-                block = self.grid[i_start:i_end, j_start:j_end].ravel() 
+                block = self.grid[i_start:i_end, j_start:j_end].ravel()
                 conflicts = self._line_conflicts(block)
                 total += conflicts
 
         return total
-    
-    def objective_f(self): 
+
+    def objective_f(self):
         con_row = self._row_conflicts()
         con_col = self._col_conflicts()
         con_block = self._block_conflicts()
@@ -96,51 +96,51 @@ class SudokuSolver:
         total_con = con_row + con_col + con_block
 
         return total_con
-    
+
     def is_valid(self) -> bool:
-        if np.any((self.grid < 1) | (self.grid > self.N)): 
+        if np.any((self.grid < 1) | (self.grid > self.N)):
             return False
-        
+
         return self.objective_f() == 0
 
-    # def get_conflicting_cells(self) -> Set[Tuple[int, int]]: #Napravljena druga fja koja radi ovaj posao, ali mozda zatreba ova
-  
-    #     N = self.N
-    #     conflicting_cells = set()
+    def get_conflicting_cells(self) -> Set[Tuple[int, int]]:
 
-    #     for i in range(N):
-    #         for j in range(N):
-    #             val = self.grid[i, j]
-                
-    #             if val == 0: continue
-                
-    #             is_conflicting = False
-                                
-    #             if np.count_nonzero(self.grid[i, :] == val) > 1:
-    #                 is_conflicting = True
-                
-    #             if np.count_nonzero(self.grid[:, j] == val) > 1:
-    #                 is_conflicting = True
+        N = self.N
+        conflicting_cells = set()
 
-    #             ik_start = (i // self.K) * self.K
-    #             ik_end = ik_start + self.K
-    #             jk_start = (j // self.K) * self.K
-    #             jk_end = jk_start + self.K
-    #             block = self.grid[ik_start:ik_end, jk_start:jk_end]
-                
-    #             if np.count_nonzero(block == val) > 1:
-    #                 is_conflicting = True
-                
-    #             if is_conflicting and not self.fixed_mask[i, j]:
-    #                 conflicting_cells.add((i, j))
+        for i in range(N):
+            for j in range(N):
+                val = self.grid[i, j]
 
-    #     return conflicting_cells
-    
+                if val == 0: continue
+
+                is_conflicting = False
+
+                if np.count_nonzero(self.grid[i, :] == val) > 1:
+                    is_conflicting = True
+
+                if np.count_nonzero(self.grid[:, j] == val) > 1:
+                    is_conflicting = True
+
+                ik_start = (i // self.K) * self.K
+                ik_end = ik_start + self.K
+                jk_start = (j // self.K) * self.K
+                jk_end = jk_start + self.K
+                block = self.grid[ik_start:ik_end, jk_start:jk_end]
+
+                if np.count_nonzero(block == val) > 1:
+                    is_conflicting = True
+
+                if is_conflicting and not self.fixed_mask[i, j]:
+                    conflicting_cells.add((i, j))
+
+        return conflicting_cells
+
     def _placment_cost(self, i:int, j:int, val:int ) -> int:
         curr = self.grid[i, j]
         self.grid[i, j] = val
 
-        row_duplicates = max(0, np.count_nonzero(self.grid[i, :] == val ) - 1) 
+        row_duplicates = max(0, np.count_nonzero(self.grid[i, :] == val ) - 1)
         col_duplicates = max(0, np.count_nonzero(self.grid[:, j] == val ) - 1)
 
         cost = row_duplicates + col_duplicates
@@ -161,7 +161,7 @@ class SudokuSolver:
 
         block = self.grid[ik_start:ik_end,jk_start:jk_end]
 
-        curr = block[block > 0] 
+        curr = block[block > 0]
         all = np.arange(1, self.N + 1)
 
         missing = []
@@ -174,15 +174,15 @@ class SudokuSolver:
 
         empty = []
 
-        for i in range(ik_start, ik_end): 
+        for i in range(ik_start, ik_end):
             for j in range(jk_start, jk_end):
                 if self.grid[i, j] == 0:
                     empty.append((i, j))
 
         if not missing or not empty:
             return
-        
-        rand.shuffle(missing) 
+
+        rand.shuffle(missing)
         rand.shuffle(empty)
 
         for val in missing:
@@ -205,7 +205,7 @@ class SudokuSolver:
                 empty.remove((i, j))
                 if not empty:
                      break
-                
+
     def greedy_init(self, passes: int = 2, seed: int | None = None ) -> None:
 
         rand = np.random.default_rng(seed)
@@ -216,22 +216,22 @@ class SudokuSolver:
                     self._fill_block_greedy(ik = ik, jk= jk, rand = rand)
 
     def _calculate_delta_cost(self, i: int, j: int, new_value: int) -> int: # Za LS
-        
+
         N = self.N
         K = self.K
         current_value = self.grid[i, j]
 
         if current_value == new_value:
-            return 0 
+            return 0
 
         old_cost = 0
 
         if np.count_nonzero(self.grid[i, :] == current_value) > 1:
             old_cost += (np.count_nonzero(self.grid[i, :] == current_value) - 1)
-        
+
         if np.count_nonzero(self.grid[:, j] == current_value) > 1:
             old_cost += (np.count_nonzero(self.grid[:, j] == current_value) - 1)
-        
+
         ik_start = (i // K) * K
         ik_end = ik_start + K
         jk_start = (j // K) * K
@@ -245,87 +245,88 @@ class SudokuSolver:
 
         if np.count_nonzero(self.grid[i, :] == new_value) > 1:
             new_cost += (np.count_nonzero(self.grid[i, :] == new_value) - 1)
-        
+
         if np.count_nonzero(self.grid[:, j] == new_value) > 1:
             new_cost += (np.count_nonzero(self.grid[:, j] == new_value) - 1)
-        
+
         new_block = self.grid[ik_start:ik_end, jk_start:jk_end]
         if np.count_nonzero(new_block == new_value) > 1:
             new_cost += (np.count_nonzero(new_block == new_value) - 1)
 
         self.grid[i, j] = current_value
-        
+
         delta = new_cost - old_cost
 
         return delta
 
+
 class ILS_CP(SudokuSolver):
 
     def __init__(self, puzzle, seed: int = 42):
-        
-        super().__init__(puzzle) 
-        
+
+        super().__init__(puzzle)
+
         import numpy as np
         self.random = np.random.default_rng(seed)
 
         self.tabu_list = {}
-        self.current_cost = self.objective_f() 
+        self.current_cost = self.objective_f()
         self.best_cost = self.current_cost
         self.best_grid = self.grid.copy()
-        
+
         self.row_counts = np.zeros((self.N, self.N + 1), dtype=int)
         self.col_counts = np.zeros((self.N, self.N + 1), dtype=int)
         self.row_missing = np.zeros(self.N, dtype=int)
         self.col_missing = np.zeros(self.N, dtype=int)
-        
+
         self.model = None
         self.cp_vars = None
         self.cp_solver = None
-        
+
         self.current_cost = self.objective_f()
         self.best_cost = self.current_cost
         self.best_grid = self.grid.copy()
 
     def _initialize_auxiliary_structures(self):
-        
+
         self.row_counts.fill(0)
         self.col_counts.fill(0)
-        
+
         for i in range(self.N):
             for j in range(self.N):
                 v = self.grid[i, j]
                 if v != 0:
                     self.row_counts[i, v] += 1
                     self.col_counts[j, v] += 1
-        
+
         for i in range(self.N):
             self.row_missing[i] = sum(1 for v in range(1, self.N + 1) if self.row_counts[i, v] == 0)
             self.col_missing[i] = sum(1 for v in range(1, self.N + 1) if self.col_counts[i, v] == 0)
-    
+
     def _subgrid_cells(self, bi: int, bj: int) -> list[Tuple[int, int]]:
 
         cells = []
         i_start, i_end = bi * self.K, (bi + 1) * self.K
         j_start, j_end = bj * self.K, (bj + 1) * self.K
-        
+
         for i in range(i_start, i_end):
             for j in range(j_start, j_end):
                 if not self.fixed_mask[i, j]:
                     cells.append((i, j))
         return cells
-    
+
     def _delta_cost_swap(self, i: int, j: int, ii: int, jj: int) -> int:
-      
+
         v1, v2 = self.grid[i, j], self.grid[ii, jj]
         delta = 0
 
         counts = self.row_counts[i]
-        if counts[v1] == 1: delta += 1 
-        if counts[v2] == 0: delta -= 1 
+        if counts[v1] == 1: delta += 1
+        if counts[v2] == 0: delta -= 1
 
         counts = self.row_counts[ii]
         if counts[v2] == 1: delta += 1
-        if counts[v1] == 0: delta -= 1  
+        if counts[v1] == 0: delta -= 1
 
         counts = self.col_counts[j]
         if counts[v1] == 1: delta += 1
@@ -336,7 +337,7 @@ class ILS_CP(SudokuSolver):
         if counts[v1] == 0: delta -= 1
 
         return delta
-    
+
     def _best_swap_in_subgrid(self, i: int, j: int, tabu: Set[Tuple[Tuple[int,int], Tuple[int,int]]],  aspiration_cost: int) -> Tuple[Optional[Tuple[int,int,int,int]], int, bool]:
 
         bi, bj = i // self.K, j // self.K
@@ -348,7 +349,7 @@ class ILS_CP(SudokuSolver):
         for ii, jj in cells:
             if (ii == i and jj == j): continue
             if self.fixed_mask[ii, jj] or self.fixed_mask[i, j]: continue
-                
+
             swap_key = tuple(sorted(((i, j), (ii, jj))))
             is_tabu = swap_key in tabu
 
@@ -364,13 +365,13 @@ class ILS_CP(SudokuSolver):
         if best is None:
             return None, 0, False
         return best, best_delta, best_tabu_aspire
-    
+
     def _cell_in_conflict(self, i: int, j: int) -> bool:
 
         v = self.grid[i, j]
         if v == 0: return False
         return self.row_counts[i, v] > 1 or self.col_counts[j, v] > 1
-    
+
     def _apply_swap(self, i: int, j: int, ii: int, jj: int):
 
         v1, v2 = self.grid[i, j], self.grid[ii, jj]
@@ -392,68 +393,178 @@ class ILS_CP(SudokuSolver):
         self.grid[i, j], self.grid[ii, jj] = v2, v1
 
         self.current_cost = np.sum(self.row_missing) + np.sum(self.col_missing)
-        
+
         if self.current_cost < self.best_cost:
             self.best_cost = self.current_cost
             self.best_grid = self.grid.copy()
 
-    def _min_conflicts_with_tabu(self, iteration_limit: int, acceptance_prob: float, tabu_size: int) -> None:
+    def _min_conflicts_with_tabu(self, iteration_limit: int, tabu_size: int, no_improvement_limit: int = 50) -> None:        
+        N = self.N
+        best_grid_ls = self.grid.copy()
+        
+        current_full_cost = self.objective_f() 
+        best_cost_in_ls = current_full_cost
+        self.current_cost = current_full_cost
 
-        tabu = deque([], maxlen=tabu_size)
-        tabu_set = set()
+        no_improvement_counter = 0 
 
-        def add_tabu(a: Tuple[int, int], b: Tuple[int, int]):
-            key = tuple(sorted((a, b)))
-            tabu.append(key)
-            tabu_set.clear()
-            tabu_set.update(tabu)
+        self.tabu_list.clear()
 
-        for _t in range(50):
-            i = self.random.integers(0, self.N) 
-            j = self.random.integers(0, self.N)
+        for k in range(1, iteration_limit + 1):
+            
+            if best_cost_in_ls == 0:
+                break
+                
+            conflicting_cells = self.get_conflicting_cells()
+
+            if not conflicting_cells:
+                best_cost_in_ls = 0
+                self.current_cost = 0
+                break
+
+            i, j = self.random.choice(list(conflicting_cells))
+            current_value = self.grid[i, j]
+
+            min_delta = float('inf')
+            best_moves = []
+
+            current_value = self.grid[i, j]
+
+            for new_value in range(1, N + 1):
+                if new_value == current_value:
+                    continue
+
+                delta = self._calculate_delta_cost(i, j, new_value)
+
+                if delta < min_delta:
+                    min_delta = delta
+                    best_moves = [(i, j, new_value)] # Samo 3 elementa
+                elif delta == min_delta:
+                    best_moves.append((i, j, new_value)) # Samo 3 elementa
+
+            if best_moves:
+                
+                r, c, new_value = self.random.choice(best_moves)
+                old_value = current_value
+
+                is_tabu = self.tabu_list.get((r, c)) == old_value
+                
+                is_aspirated = (current_full_cost + min_delta < self.best_cost) 
+                
+                if is_tabu and not is_aspirated and min_delta >= 0:
+                    
+                    continue 
+                                
+                self.grid[r, c] = new_value
+
+                self.tabu_list[(r, c)] = old_value 
+
+                if len(self.tabu_list) > tabu_size:
+                    key_to_delete = next(iter(self.tabu_list)) 
+                    del self.tabu_list[key_to_delete]
+
+                new_full_cost = self.objective_f() 
+                self.current_cost = new_full_cost 
+
+                if new_full_cost < best_cost_in_ls:
+                    best_cost_in_ls = new_full_cost
+                    best_grid_ls = self.grid.copy()
+                    no_improvement_counter = 0
+                else:
+                    no_improvement_counter += 1
+            
+            if no_improvement_counter >= no_improvement_limit:
+                self.grid = best_grid_ls.copy()
+                self.current_cost = best_cost_in_ls
+            
+            if self.current_cost < self.best_cost:
+                self.best_cost = self.current_cost
+                self.best_grid = self.grid.copy()
+
+    def _accept(self, old_cost: int, new_cost: int, T: float,
+        mode: str = "metropolis", accept_prob: float = 0.0) -> bool:
+        mode = mode.lower()
+
+        if mode == "hill":
+            if new_cost < old_cost:
+                return True
+        
+            return self.random.random() < float(accept_prob)
+        else:
+            
+            if new_cost <= old_cost:
+                return True
+            if T <= 1e-12:
+                return False
+            
+            delta = new_cost - old_cost
+            p = math.exp(-float(delta) / float(T))
+
+            return self.random.random() < p
+
+    def _temperature(self, it: int, T0: float, alpha: float) -> float:
+        
+        return float(T0) * (float(alpha) ** int(it))
     
-        for _ in range(iteration_limit):
-            if self.current_cost == 0:
-                return
+    def ils_run(self,
+            time_limit_s: float = 10.0,
+            mode: str = "metropolis",        
+            T0: float = 1.25, alpha: float = 0.995,
+            accept_prob: float = 0.01,       
+            ls_callback=None,                
+            perturb_callback=None,           
+            ls_kwargs: dict | None = None,
+            perturb_kwargs: dict | None = None,
+            verbose: bool = False):
+        
+        start = time.time()
+        ls_kwargs = ls_kwargs or {}
+        perturb_kwargs = perturb_kwargs or {}
 
-            chosen = None
-            for _t in range(50):                
-                i = self.random.integers(0, self.N) 
-                j = self.random.integers(0, self.N) 
-                
-                if not self.fixed_mask[i, j] and self._cell_in_conflict(i, j):
-                    chosen = (i, j)
-                    break
-            
-            if chosen is None:
-                unfixed = [(i, j) for i in range(self.N) for j in range(self.N) if not self.fixed_mask[i, j]]
-                if not unfixed: return
-                chosen = self.random.choice(unfixed)
-            i, j = chosen
+        cur_cost = int(self.objective_f())
+        best_cost = cur_cost
+        best_grid = self.grid.copy()
 
-            best_move, delta, asp = self._best_swap_in_subgrid(i, j, tabu_set, self.best_cost)
-            if best_move is None: continue
+        it = 0
+        while time.time() - start < time_limit_s and best_cost > 0:
+            if ls_callback is not None:
+                ls_callback(self, **ls_kwargs)
+            cur_cost = int(self.objective_f())
 
-            new_cost = self.current_cost + delta
-            
-            if new_cost < self.current_cost or self.random.random() < acceptance_prob or asp:
-                i, j, ii, jj = best_move 
-                
-                self._apply_swap(i, j, ii, jj) 
-                
-                add_tabu((i, j), (ii, jj))
+            if cur_cost < best_cost:
+                best_cost = cur_cost
+                best_grid = self.grid.copy()
+                if verbose:
+                    print(f"[ILS] LS best={best_cost}")
 
-            if self.current_cost == 0:
-                return
-            
+            if perturb_callback is not None:
+                perturb_callback(self, **perturb_kwargs)
+
+            new_cost = int(self.objective_f())
+            T = self._temperature(it, T0, alpha) if mode != "hill" else 0.0
+            if self._accept(cur_cost, new_cost, T, mode=mode, accept_prob=accept_prob):
+                cur_cost = new_cost
+                if cur_cost < best_cost:
+                    best_cost = cur_cost
+                    best_grid = self.grid.copy()
+                    if verbose:
+                        print(f"[ILS] Accepted better={best_cost}")
+            else:
+           
+                self.grid[:, :] = best_grid
+                cur_cost = best_cost
+                if verbose:
+                    print(f"[ILS] Rejected, revert to best={best_cost}")
+
+            it += 1
+
+        self.grid[:, :] = best_grid
+        return best_cost
+
 class SudokuCP(SudokuSolver):
     def __init__(self, puzzle, seed = None):
         super().__init__(puzzle)
-
-        self.seed = seed
-        self.model = None
-        self.cp_vars = None
-        self.cp_solver = None
+        self.random = np.random.default_rng(seed)
 
     def _build_cp_model(self):
         self.model = cp_model.CpModel()
@@ -468,7 +579,7 @@ class SudokuCP(SudokuSolver):
                 row.append(var)
 
             x.append(row)
-        
+
         for i in range(N):
             self.model.AddAllDifferent(x[i])
 
@@ -476,7 +587,7 @@ class SudokuCP(SudokuSolver):
             col = []
             for i in range(N):
                 col.append(x[i][j])
-            
+
             self.model.AddAllDifferent(col)
 
         for ik in range(K):
@@ -484,7 +595,7 @@ class SudokuCP(SudokuSolver):
                 ik_start = ik * K
                 ik_end = (ik + 1) * K
                 jk_start = jk * K
-                jk_end = (jk + 1) * K 
+                jk_end = (jk + 1) * K
 
                 cells = []
                 for i in range(ik_start, ik_end):
@@ -492,11 +603,6 @@ class SudokuCP(SudokuSolver):
                         cells.append(x[i][j])
 
                 self.model.AddAllDifferent(cells)
-
-        for i in range(N):
-            for j in range(N):
-                if self.grid[i, j] != 0:
-                    self.model.Add(x[i][j] == int(self.grid[i, j]))
 
         self.cp_vars = x
         self.cp_solver = cp_model.CpSolver()
@@ -506,13 +612,13 @@ class SudokuCP(SudokuSolver):
 
         if val == 0:
             return False
-        
+
         if np.count_nonzero(self.grid[i, :] == val) > 1:
             return False
-        
+
         if np.count_nonzero(self.grid[:, j] == val ) > 1:
             return False
-        
+
         ik = i // self.K
         jk = j // self.K
 
@@ -525,30 +631,30 @@ class SudokuCP(SudokuSolver):
 
         if np.count_nonzero(block == val) > 1:
             return False
-        
+
         return True
-    
-    def cp_refinement(self, time_limit: float | None = 10.0, fix_noncon: bool = True, hints: bool = True, log_search: bool = False):
-        if self.model is None or self.cp_vars is None or self.cp_solver is None:
-            self._build_cp_model()
+
+    def cp_refinement(self, time_limit: float | None = 10.0, fix_noncon: bool = False, hints: bool = True, log_search: bool = False):
+        
+        self._build_cp_model() 
 
         model = self.model
         x = self.cp_vars
         solver = self.cp_solver
         N = self.N
-
+        
         for i in range(N):
             for j in range(N):
                 if self.fixed_mask[i, j] and self.grid[i, j] != 0:
-                    model.Add(x[i][j] == int(self.grid[i, j]))
-
+                    model.Add(x[i][j] == int(self.grid[i][j]))
         
         if fix_noncon:
             for i in range(N):
                 for j in range(N):
+                    # Fiksiramo NE-FIKSIRANE (popunjene Greedyjem) nekonfliktne ćelije
                     if not self.fixed_mask[i, j] and self.grid[i, j] != 0:
                         if self._is_cell_nonconflicting(i, j):
-                            model.Add(x[i][j] == int(self.grid[i, j]))
+                            model.Add(x[i][j] == int(self.grid[i][j]))
 
         if hints:
             for i in range(N):
@@ -565,8 +671,10 @@ class SudokuCP(SudokuSolver):
         status = solver.Solve(model)
 
         if status in (OPTIMAL, FEASIBLE):
+            # Citanje rešenja nazad u self.grid
             for i in range(N):
                 for j in range(N):
-                    self.grid[i, j] = int(solver.Value(x[i][j]))
+                    # Koristimo int() jer solver.Value(x) vraca Python integer (koji je kompatibilan sa numpy int)
+                    self.grid[i, j] = int(solver.Value(x[i][j])) 
 
-        return status                
+        return status

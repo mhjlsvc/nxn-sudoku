@@ -41,14 +41,13 @@ if __name__ == "__main__":
 
     #ZA TEST _min_conflicts_with_tabu
     ls_iterations_test = 5000 
-    acceptance_prob_test = 0.01
     tabu_size_test = 10
 
     solver._min_conflicts_with_tabu(
-        iteration_limit=ls_iterations_test, 
-        acceptance_prob=acceptance_prob_test, 
-        tabu_size=tabu_size_test
-    )
+    iteration_limit=ls_iterations_test, 
+    tabu_size=tabu_size_test,
+    no_improvement_limit=1000 
+)
 
     solver.display_grid("Nakon LS: ")
 
@@ -62,13 +61,12 @@ if __name__ == "__main__":
     cp_solver = SudokuCP(puzzle_9x9, seed = 42)
 
     cp_solver.grid = solver.best_grid.copy()
-    cp_solver.fixed_mask = (cp_solver.grid != 0)
     cp_solver._build_cp_model()
 
     print("\nCP: ")
     print(f"Broj promenljivih: {cp_solver.N**2}")
 
-    status = cp_solver.cp_refinement(time_limit=10.0, fix_noncon=True, hints=True)
+    status = cp_solver.cp_refinement(time_limit=10.0, fix_noncon=False, hints=True)
     cp_solver.display_grid("Rešenje nakon CP:")
 
     cp_final_cost = cp_solver.objective_f()
