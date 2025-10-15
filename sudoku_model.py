@@ -399,6 +399,7 @@ class ILS_CP(SudokuSolver):
             self.best_grid = self.grid.copy()
 
     def _min_conflicts_with_tabu(self, iteration_limit: int, tabu_size: int, no_improvement_limit: int = 50) -> None:        
+        
         N = self.N
         best_grid_ls = self.grid.copy()
         
@@ -481,8 +482,8 @@ class ILS_CP(SudokuSolver):
                 self.best_cost = self.current_cost
                 self.best_grid = self.grid.copy()
 
-    def _accept(self, old_cost: int, new_cost: int, T: float,
-        mode: str = "metropolis", accept_prob: float = 0.0) -> bool:
+    def _accept(self, old_cost: int, new_cost: int, T: float, mode: str = "metropolis", accept_prob: float = 0.0) -> bool:
+        
         mode = mode.lower()
 
         if mode == "hill":
@@ -560,6 +561,163 @@ class ILS_CP(SudokuSolver):
 
         self.grid[:, :] = best_grid
         return best_cost
+
+    def _free_cells_in_block(self, ik: int, jk: int):
+        K = self.K
+        ik_start = ik * K
+        ik_end = (ik + 1)*K
+        jk_start = jk * K
+        jk_end = (jk + 1)*K
+        
+        free_cells = []
+
+        for i in range(ik_start, ik_end):
+            for j in range(jk_start, jk_end):
+                if not self.fixed_mask[i, j]:
+                    free_cells.append((i, j))
+
+        return free_cells
+    
+    def _perturb_one_swap_in_block(self):
+        K = self.K
+    
+        order = []  
+        for ik in range(K):
+            for jk in range(K):
+                order.append((ik, jk))
+
+        self.random.shuffle(order)
+
+        for (ik, jk) in order:
+            cells = self._free_cells_in_block(ik, jk)
+            if len(cells) >= 2:
+                (i1, j1), (i2, j2) = self.random.sample(cells, 2)
+                self.grid[i1, j1], self.grid[i2, j2] = self.grid[i2, j2], self.grid[i1, j1]
+                return  
+            
+    def _perturb_k_swaps(self, k: int = 3):
+        for _ in range(k):
+            self._perturb_one_swap_in_block()
+            
+    def _perturb_shuffle_block(self):
+        K = self.K
+
+        blocks = []
+        for ik in range(K):
+            for jk in range(K):
+                blocks.append((ik, jk))
+
+        self.random.shuffle(blocks)
+
+        for (bi, bj) in blocks:
+            cells = self._free_cells_in_block(bi, bj)   
+            if len(cells) >= 2:
+                vals = []
+                for(i, j) in cells:
+                    vals.append(self.grid[i, j])
+
+                self.random.shuffle(vals)
+
+                for (i, j), v in zip(cells, vals):
+                    self.grid[i, j] = v
+                return
+            
+    def perturb(self, p_rate: float, cp_time_limit: float) -> None:
+ 
+        N = self.N
+        
+        total_cells_to_empty = int(N * N * p_rate)
+        
+        mutable_cells = []
+        for i in range(N):
+            for j in range(N):
+                if self.grid[i, j] != 0 and not self.fixed_mask[i, j]:
+                    mutable_cells.append((i, j))
+
+        if len(mutable_cells) < total_cells_to_empty:
+            total_cells_to_empty = len(mutable_cells)
+
+        if not mutable_cells:
+            return
+             
+        indices_to_empty = self.random.choice(
+            mutable_cells, 
+            size=total_cells_to_empty, 
+            replace=False  
+        )
+        
+        for i, j in indices_to_empty:
+            self.grid[i, j] = 0
+            
+        self.current_cost = self.objective_f()
+        
+        cp_refiner = SudokuCP(self.grid.copy(), seed=None) 
+        
+        cp_refiner.fixed_mask = self.fixed_mask.copy() 
+        
+        status = cp_refiner.cp_refinement(
+            time_limit=cp_time_limit, 
+            fix_noncon=False, 
+            hints=False 
+        ) 
+
+        if status in (OPTIMAL, FEASIBLE):
+            self.grid = cp_refiner.grid.copy() 
+         
+
+    def solve_ils_cp(self, total_iterations: int = 1000, ls_iterations: int = 5000, acceptance_prob: float = 0.01, tabu_size: int = 10, cp_limit: float = 1.0, empty_factor_init: float = 0.25, alpha: float = 0.99) -> None:
+    
+        if self.current_cost == 0 and self.is_valid():
+            print("ILS: Rešenje je pronađeno u inicijalizaciji.")
+            return
+
+        self.best_cost = self.current_cost 
+        self.best_grid = self.grid.copy()
+        
+        empty_factor = empty_factor_init
+        
+        print(f"Hibridni ILS (Početna cena: {self.best_cost})")
+
+        for k in range(1, total_iterations + 1):
+            
+            self.current_cost = self.objective_f()
+            self._min_conflicts_with_tabu(ls_iterations, acceptance_prob, tabu_size)
+
+            self.current_cost = self.objective_f()
+            
+            if self.current_cost == 0:
+                print(f"ILS uspešno rešen u iteraciji {k} nakon LS-a.")
+                self.best_cost = 0  
+                self.best_grid = self.grid.copy() 
+                return 
+
+            if self.current_cost < self.best_cost:
+                self.best_cost = self.current_cost
+                self.best_grid = self.grid.copy()
+
+            if self.current_cost > self.best_cost:
+                 self.grid = self.best_grid.copy()
+                 self.current_cost = self.best_cost 
+            
+            self.perturb(p_rate=empty_factor, cp_time_limit=cp_limit)
+
+            self.current_cost = self.objective_f() 
+            
+            if self.current_cost == 0:
+                print(f"ILS uspešno rešen u iteraciji {k} nakon CP-a.")
+                self.best_cost = 0  
+                self.best_grid = self.grid.copy() 
+                return # ZAVRŠI IZAĐI IZ FUNKCIJE
+            
+            empty_factor *= alpha
+            
+            print(f"ILS Ciklus {k}/{total_iterations}: Trošak: {self.current_cost}, Najbolji: {self.best_cost}, Faktor kvarenja: {empty_factor:.3f}")
+
+            if k % 50 == 0:
+                self.display_grid(f"ILS Stanje nakon {k} ciklusa (Cena: {self.best_cost})")
+
+        self.grid = self.best_grid.copy()
+        print(f"ILS završio nakon {total_iterations} iteracija. Najbolja cena: {self.best_cost}")
 
 class SudokuCP(SudokuSolver):
     def __init__(self, puzzle, seed = None):
