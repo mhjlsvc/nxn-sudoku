@@ -1,6 +1,6 @@
 Rezultati eksperimenta
 
-ID  | ProbEm_Size  | Total_Iterations| LS_Iterations | Acceptance_Prob | Tabu_Size  | CP_Limit_s  | Empty_Factor_Init | Alpha_Decay  | Execution_Time_s | Best_Cost | Solution_Valid | CP_Calls | CP_Successes  | 
+ID  | Probem_Size  | Total_Iterations| LS_Iterations | Acceptance_Prob | Tabu_Size  | CP_Limit_s  | Empty_Factor_Init | Alpha_Decay  | Execution_Time_s | Best_Cost | Solution_Valid | CP_Calls | CP_Successes  | 
 ----|--------------|-----------------|---------------|-----------------|------------|-------------|-------------------|--------------|------------------|-----------|----------------|----------|---------------|  
 1   | 4            | 200             | 5000          | 0.15            | 10         | 15          | 0.2               | 0.995        | 0.0002           | 0         | True           | 0        | 0             | 
 2   | 4            | 200             | 5000          | 0.15            | 10         | 15          | 0.2               | 0.995        | 0.0001           | 0         | True           | 0        | 0             | 
@@ -22,7 +22,7 @@ Tabela Parametara i metrike
   
 |   Kolona         |  Opis                                                                                                         |
 |------------------|---------------------------------------------------------------------------------------------------------------|
-| ProbEm_Size      |  Veličina instance problema (npr. 9×9 Sudoku)                                                                 |
+| Probem_Size      |  Veličina instance problema (npr. 9×9 Sudoku)                                                                 |
 | LS Iterations    |  Maksimalni broj koraka u fazi lokalne pretrage                                                               |
 | Acceptance Prob  |  Verovatnoća prihvatanja lošijeg rešenja u lokalnoj pretrazi                                                  |
 | Tabu Size	       |  Veličina Tabu liste u Min-Conflicts varijanti                                                                |
@@ -34,5 +34,5 @@ Tabela Parametara i metrike
 | Solution Valid   |  Da li je najbolje pronađeno rešenje validno (True ako je Best Cost = 0)                                      |
 | CP Calls         |  Broj poziva CP rešavača                                                                                      |
 | CP Successes     |  Broj puta kada je CP pronašao validno rešenje ili novo najbolje rešenje                                      |
-|------------------|---------------------------------------------------------------------------------------------------------------|
+
         
