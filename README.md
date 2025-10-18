@@ -15,7 +15,7 @@ ID  | Probem_Size  | Total_Iterations| LS_Iterations | Acceptance_Prob | Tabu_Si
 11  | 16           | 200             | 5000          | 0.15            | 10         | 15          | 0.2               | 0.995        | 58.043           | 90        | False          | 200      | 1             | 
 
 *Napomena *
-Posebnu pažnju treba obratiti na redove eksperimente 10 i 11. Ovi eksperimenti su sprovedeni na nerešivim instancama problema, koje su namerno uključene radi validacije pouzdanosti algoritma.
+Posebnu pažnju treba obratiti na eksperimente 10 i 11. Ovi eksperimenti su sprovedeni na nerešivim instancama problema, koje su namerno uključene radi validacije pouzdanosti algoritma.
 
 Tabela Parametara i metrike
 
