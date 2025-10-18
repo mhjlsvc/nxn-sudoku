@@ -445,6 +445,8 @@ class ILS_CP(SudokuSolver):
         no_improvement_counter = 0 
         self.tabu_list.clear()
 
+        moves_used = iteration_limit
+
         for k in range(1, iteration_limit + 1):
         
             if best_cost_in_ls == 0:
@@ -455,6 +457,7 @@ class ILS_CP(SudokuSolver):
             if not conflicting_cells:
                 best_cost_in_ls = 0
                 self.current_cost = 0
+                moves_used = k
                 break
 
             i, j = self.random.choice(list(conflicting_cells))
@@ -499,6 +502,13 @@ class ILS_CP(SudokuSolver):
                     best_cost_in_ls = new_full_cost
                     best_grid_ls = self.grid.copy()
                     no_improvement_counter = 0
+
+                if new_full_cost == 0:
+                    moves_used = k
+                    self.current_cost = 0
+                    best_cost_in_ls = 0
+                    best_grid_ls = self.grid.copy()
+                    break 
                 else:
                     no_improvement_counter += 1
         
@@ -512,7 +522,7 @@ class ILS_CP(SudokuSolver):
         if self.current_cost < initial_cost:
             self.ls_success_count += 1 
 
-        return initial_cost != self.current_cost
+        return initial_cost != self.current_cost, moves_used
 
     def _accept(self, old_cost: int, new_cost: int, T: float, mode: str = "metropolis", accept_prob: float = 0.0) -> bool:
         
@@ -724,11 +734,13 @@ class ILS_CP(SudokuSolver):
 
         start_time = time.time()
 
+        total_ls_moves_to_solution = total_iterations * ls_iterations
+
         self.convergence_data = []
 
         if self.current_cost == 0 and self.is_valid():
             print("ILS: Rešenje je pronađeno u inicijalizaciji.")
-            return self._prepare_final_results(start_time, total_iterations, ls_iterations, acceptance_prob, tabu_size, cp_limit, empty_factor_init, alpha)
+            return self._prepare_final_results(start_time, 0, 0, acceptance_prob, tabu_size, cp_limit, empty_factor_init, alpha)
 
         self.best_cost = self.current_cost 
         self.best_grid = self.grid.copy()
@@ -744,14 +756,18 @@ class ILS_CP(SudokuSolver):
             self.current_cost = self.objective_f()
             self._min_conflicts_with_tabu(ls_iterations, acceptance_prob, tabu_size)
 
+            moves_used_in_ls = self._min_conflicts_with_tabu(ls_iterations, tabu_size)
+
             self.current_cost = self.objective_f()
 
             if self.current_cost == 0:
                 print(f"ILS uspešno rešen u iteraciji {k} nakon LS-a.")
+                total_ls_moves_to_solution = (k - 1) * ls_iterations + moves_used_in_ls
                 self.best_cost = 0  
                 self.best_grid = self.grid.copy() 
-                return self._prepare_final_results(start_time, total_iterations, ls_iterations, acceptance_prob, tabu_size, cp_limit, empty_factor_init, alpha)
-
+                
+                return self._prepare_final_results(start_time, k, total_ls_moves_to_solution, acceptance_prob, tabu_size, cp_limit, empty_factor_init, alpha)
+            
             if self.current_cost < self.best_cost:
                 self.best_cost = self.current_cost
                 self.best_grid = self.grid.copy()
@@ -776,9 +792,10 @@ class ILS_CP(SudokuSolver):
                     self.best_grid = self.grid.copy()
 
             if self.current_cost == 0:
+                total_ls_moves_to_solution = k * ls_iterations
                 print(f"ILS uspešno rešen u iteraciji {k} nakon perturbacije/CP-a.")
-                return self._prepare_final_results(start_time, total_iterations, ls_iterations, acceptance_prob, tabu_size, cp_limit, empty_factor_init, alpha)
-        
+                return self._prepare_final_results(start_time, k, total_ls_moves_to_solution, acceptance_prob, tabu_size, cp_limit, empty_factor_init, alpha) 
+                   
             current_elapsed_time = time.time() - start_time
         
             self.convergence_data.append({
@@ -800,6 +817,11 @@ class ILS_CP(SudokuSolver):
         total_time = end_time - start_time
         solution_is_valid = self.objective_f() == 0
 
+        if not solution_is_valid:
+             total_ls_moves_to_solution = total_iterations * ls_iterations
+        else:
+             total_ls_moves_to_solution = total_iterations * ls_iterations
+
         print(f"\nILS završio nakon {total_iterations} iteracija. Najbolja cena: {self.best_cost}")
         print("\n--- ZAVRŠNA STATISTIKA ILS-CP ---")
         print(f"Najbolja postignuta cena: {self.best_cost}")
@@ -808,8 +830,8 @@ class ILS_CP(SudokuSolver):
         print(f"CP poziva/uspeha: {self.cp_call_count} / {self.cp_success_count}")
         print("\n")
 
-        return self._prepare_final_results(start_time, total_iterations, ls_iterations, acceptance_prob, tabu_size, cp_limit, empty_factor_init, alpha)
-    
+        return self._prepare_final_results(start_time, total_iterations, total_ls_moves_to_solution, acceptance_prob, tabu_size, cp_limit, empty_factor_init, alpha)
+        
 class SudokuCP(SudokuSolver):
     def __init__(self, puzzle, seed = None):
         super().__init__(puzzle)

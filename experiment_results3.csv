@@ -1,0 +1,12 @@
+Problem_Size;Total_Iterations;LS_Iterations;Acceptance_Prob;Tabu_Size;CP_Limit_s;Empty_Factor_Init;Alpha_Decay;Execution_Time_s;Best_Cost;Solution_Valid;CP_Calls;CP_Successes;Run_ID
+4;0;0;0.15;10;15;0.2;0.995;0.00020503997802734375;0;True;0;0;Rezultati
+4;0;0;0.15;10;15;0.2;0.995;0.00019288063049316406;0;True;0;0;Rezultati
+4;0;0;0.15;10;15;0.2;0.995;0.00019288063049316406;0;True;0;0;Rezultati
+9;1;50;0.15;10;15;0.2;0.995;0.25843358039855957;0;True;1;1;Rezultati
+9;1;50;0.15;10;15;0.2;0.995;0.29758477210998535;0;True;1;1;Rezultati
+9;1;50;0.15;10;15;0.2;0.995;0.2693319320678711;0;True;1;1;Rezultati
+16;1;50;0.15;10;15;0.2;0.995;0.8752913475036621;0;True;1;1;Rezultati
+16;1;50;0.15;10;15;0.2;0.995;1.3290584087371826;0;True;1;1;Rezultati
+25;1;50;0.15;10;15;0.2;0.995;3.7364890575408936;0;True;1;1;Rezultati
+9;50;2500;0.15;10;15;0.2;0.995;0.6796674728393555;2;False;50;2;Rezultati
+16;50;2500;0.15;10;15;0.2;0.995;1.6111080646514893;90;False;50;1;Rezultati

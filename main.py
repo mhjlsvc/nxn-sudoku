@@ -76,8 +76,6 @@ if __name__ == "__main__":
         
     res_dat = "Rezultati"
 
-    print(f"Koristim CP limit: 20.0s, Faktor kvarenja: 0.10, Acceptance Prob: 0.20")
-
     for idx, puzzle in enumerate(all_puzzles):
         N = len(puzzle)
         print(f"\n--- REŠAVANJE PROBLEMA #{idx + 1} (VELIČINA: {N}x{N}) ---")
@@ -99,8 +97,8 @@ if __name__ == "__main__":
         start_time = time.time()
 
         final_metrics = solver.solve_ils_cp(
-            total_iterations=200,
-            ls_iterations=5000,
+            total_iterations=50,
+            ls_iterations=50,
             acceptance_prob=0.15,
             tabu_size=10,
             cp_limit=15,
@@ -110,7 +108,7 @@ if __name__ == "__main__":
 
         save_results_to_csv(
         results=final_metrics, 
-        filename="experiment_results.csv", 
+        filename="experiment_results3.csv", 
         run_id=res_dat
         )
     
