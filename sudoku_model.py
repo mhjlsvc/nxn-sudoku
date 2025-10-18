@@ -721,7 +721,7 @@ class ILS_CP(SudokuSolver):
         return results
          
     def solve_ils_cp(self, total_iterations: int = 1000, ls_iterations: int = 5000, acceptance_prob: float = 0.05, tabu_size: int = 10, cp_limit: float = 8.0, empty_factor_init: float = 0.1, alpha: float = 0.99) -> dict:
-    
+
         start_time = time.time()
 
         self.convergence_data = []
@@ -738,14 +738,14 @@ class ILS_CP(SudokuSolver):
         print(f"Hibridni ILS (Početna cena: {self.best_cost})")
 
         for k in range(1, total_iterations + 1):
-    
+
             self.total_iterations_run = k
-    
+
             self.current_cost = self.objective_f()
             self._min_conflicts_with_tabu(ls_iterations, acceptance_prob, tabu_size)
 
             self.current_cost = self.objective_f()
-    
+
             if self.current_cost == 0:
                 print(f"ILS uspešno rešen u iteraciji {k} nakon LS-a.")
                 self.best_cost = 0  
@@ -759,29 +759,28 @@ class ILS_CP(SudokuSolver):
             if self.current_cost > self.best_cost:
                 self.grid = self.best_grid.copy()
                 self.current_cost = self.best_cost 
-    
+
             if self.current_cost > 0:
                 self.cp_call_count += 1
-        
-            cp_improved = self.perturb(p_rate=empty_factor, cp_time_limit=cp_limit)
+    
+            self.perturb(p_rate=empty_factor, cp_time_limit=cp_limit)
 
-            if cp_improved:
-                self.cp_success_count += 1
-    
             self.current_cost = self.objective_f() 
-    
+        
+            if self.current_cost <= self.best_cost:
+            
+                if self.current_cost < self.best_cost or self.current_cost == 0:
+                    self.cp_success_count += 1
+                
+                    self.best_cost = self.current_cost
+                    self.best_grid = self.grid.copy()
+
             if self.current_cost == 0:
                 print(f"ILS uspešno rešen u iteraciji {k} nakon perturbacije/CP-a.")
-                self.best_cost = 0  
-                self.best_grid = self.grid.copy() 
                 return self._prepare_final_results(start_time, total_iterations, ls_iterations, acceptance_prob, tabu_size, cp_limit, empty_factor_init, alpha)
-    
-            if self.current_cost < self.best_cost:
-                self.best_cost = self.current_cost
-                self.best_grid = self.grid.copy()
-
+        
             current_elapsed_time = time.time() - start_time
-            
+        
             self.convergence_data.append({
                 'k': k,                              
                 'best_cost': self.best_cost,         
@@ -789,7 +788,7 @@ class ILS_CP(SudokuSolver):
                 })
 
             empty_factor *= alpha
-    
+
             print(f"ILS Ciklus {k}/{total_iterations}: Trošak: {self.current_cost}, Najbolji: {self.best_cost}, Faktor kvarenja: {empty_factor:.3f}")
 
             if k % 50 == 0:
