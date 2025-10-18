@@ -6,6 +6,7 @@ from ortools.sat.python.cp_model import OPTIMAL, FEASIBLE
 import random
 import time, math
 
+
 class SudokuSolver:
 
     def __init__(self, puzzle):
@@ -19,11 +20,29 @@ class SudokuSolver:
     def display_grid(self, title="Trenutna Sudoku ploča"):
 
         print(f"\n--- {title} (Veličina: {self.N}x{self.N}) ---")
+    
+        width = len(str(self.N))
+    
+        fmt_str = f"{{:<{width}}}"
 
         def print_separator():
-            line = "+---" * self.K
-            print(line * self.K + "+")
+            cell_width = width + 1 
+            cell_line = ("-" * cell_width) 
+        
+            line = ""
+            for _ in range(self.K):
+                block_line = ("+" + cell_line) * self.K + "+"
+                line += block_line
+        
+                separator_unit = ('-' * (width + 1)) + '+' 
+        
+            separator_part = ("-" * (width + 1)) 
+        
+            block_sep = (separator_part + "+") * self.K
 
+            final_separator = "+" + block_sep * self.K
+        
+            print(final_separator)
 
         for i in range(self.N):
             if i % self.K == 0:
@@ -31,11 +50,18 @@ class SudokuSolver:
 
             row_str = "|"
             for j in range(self.N):
-                val = str(self.grid[i, j]) if self.grid[i, j] != 0 else "."
+                val = self.grid[i, j]
+            
+                if val != 0:
+                    cell_content = fmt_str.format(val)
+                else:
+                    cell_content = fmt_str.format(".") 
 
-                row_str += f" {val} "
+                row_str += f" {cell_content}" 
+            
                 if (j + 1) % self.K == 0:
-                    row_str += "|"
+                    row_str += " |" 
+        
             print(row_str)
 
         print_separator()
@@ -48,6 +74,7 @@ class SudokuSolver:
             return 0
 
         unique, counts = np.unique(vals, return_counts = True)
+
         return int(np.sum(counts[counts > 1] - 1) )
 
     def _row_conflicts(self):
@@ -215,7 +242,7 @@ class SudokuSolver:
                 for jk in range(self.K):
                     self._fill_block_greedy(ik = ik, jk= jk, rand = rand)
 
-    def _calculate_delta_cost(self, i: int, j: int, new_value: int) -> int: # Za LS
+    def _calculate_delta_cost(self, i: int, j: int, new_value: int) -> int:
 
         N = self.N
         K = self.K
@@ -286,6 +313,11 @@ class ILS_CP(SudokuSolver):
         self.current_cost = self.objective_f()
         self.best_cost = self.current_cost
         self.best_grid = self.grid.copy()
+
+        self.total_iterations_run = 0
+        self.ls_success_count = 0  
+        self.cp_call_count = 0     
+        self.cp_success_count = 0
 
     def _initialize_auxiliary_structures(self):
 
@@ -398,24 +430,26 @@ class ILS_CP(SudokuSolver):
             self.best_cost = self.current_cost
             self.best_grid = self.grid.copy()
 
-    def _min_conflicts_with_tabu(self, iteration_limit: int, tabu_size: int, no_improvement_limit: int = 50) -> None:        
-        
-        N = self.N
+    def _min_conflicts_with_tabu(self, iteration_limit: int, tabu_size: int, no_improvement_limit: int = 50) -> bool:        
+    
+        initial_cost = self.objective_f()
+    
+        if initial_cost == 0:
+            return False
+
         best_grid_ls = self.grid.copy()
-        
-        current_full_cost = self.objective_f() 
-        best_cost_in_ls = current_full_cost
-        self.current_cost = current_full_cost
-
+        best_cost_in_ls = initial_cost
+        self.current_cost = initial_cost
+    
+        N = self.N
         no_improvement_counter = 0 
-
         self.tabu_list.clear()
 
         for k in range(1, iteration_limit + 1):
-            
+        
             if best_cost_in_ls == 0:
                 break
-                
+            
             conflicting_cells = self.get_conflicting_cells()
 
             if not conflicting_cells:
@@ -429,8 +463,6 @@ class ILS_CP(SudokuSolver):
             min_delta = float('inf')
             best_moves = []
 
-            current_value = self.grid[i, j]
-
             for new_value in range(1, N + 1):
                 if new_value == current_value:
                     continue
@@ -439,27 +471,23 @@ class ILS_CP(SudokuSolver):
 
                 if delta < min_delta:
                     min_delta = delta
-                    best_moves = [(i, j, new_value)] # Samo 3 elementa
+                    best_moves = [(i, j, new_value)]
                 elif delta == min_delta:
-                    best_moves.append((i, j, new_value)) # Samo 3 elementa
+                    best_moves.append((i, j, new_value))
 
-            if best_moves:
-                
-                r, c, new_value = self.random.choice(best_moves)
-                old_value = current_value
-
+                if best_moves:
+                    r, c, new_value = self.random.choice(best_moves)
+                    old_value = current_value 
+            
                 is_tabu = self.tabu_list.get((r, c)) == old_value
-                
-                is_aspirated = (current_full_cost + min_delta < self.best_cost) 
-                
+                is_aspirated = (self.current_cost + min_delta < self.best_cost) 
+            
                 if is_tabu and not is_aspirated and min_delta >= 0:
-                    
                     continue 
-                                
+                            
                 self.grid[r, c] = new_value
 
                 self.tabu_list[(r, c)] = old_value 
-
                 if len(self.tabu_list) > tabu_size:
                     key_to_delete = next(iter(self.tabu_list)) 
                     del self.tabu_list[key_to_delete]
@@ -473,14 +501,18 @@ class ILS_CP(SudokuSolver):
                     no_improvement_counter = 0
                 else:
                     no_improvement_counter += 1
-            
-            if no_improvement_counter >= no_improvement_limit:
-                self.grid = best_grid_ls.copy()
-                self.current_cost = best_cost_in_ls
-            
-            if self.current_cost < self.best_cost:
-                self.best_cost = self.current_cost
-                self.best_grid = self.grid.copy()
+        
+                if no_improvement_counter >= no_improvement_limit:
+                    self.grid = best_grid_ls.copy()
+                    self.current_cost = best_cost_in_ls
+    
+        self.grid = best_grid_ls.copy()
+        self.current_cost = best_cost_in_ls 
+
+        if self.current_cost < initial_cost:
+            self.ls_success_count += 1 
+
+        return initial_cost != self.current_cost
 
     def _accept(self, old_cost: int, new_cost: int, T: float, mode: str = "metropolis", accept_prob: float = 0.0) -> bool:
         
@@ -536,7 +568,7 @@ class ILS_CP(SudokuSolver):
                 best_cost = cur_cost
                 best_grid = self.grid.copy()
                 if verbose:
-                    print(f"[ILS] LS best={best_cost}")
+                    print(f"LS best={best_cost}")
 
             if perturb_callback is not None:
                 perturb_callback(self, **perturb_kwargs)
@@ -549,13 +581,13 @@ class ILS_CP(SudokuSolver):
                     best_cost = cur_cost
                     best_grid = self.grid.copy()
                     if verbose:
-                        print(f"[ILS] Accepted better={best_cost}")
+                        print(f"Prihvaćeno bolje: ={best_cost}")
             else:
            
                 self.grid[:, :] = best_grid
                 cur_cost = best_cost
                 if verbose:
-                    print(f"[ILS] Rejected, revert to best={best_cost}")
+                    print(f"Vrati se na bolje ={best_cost}")
 
             it += 1
 
@@ -663,62 +695,122 @@ class ILS_CP(SudokuSolver):
 
         if status in (OPTIMAL, FEASIBLE):
             self.grid = cp_refiner.grid.copy() 
-         
 
-    def solve_ils_cp(self, total_iterations: int = 1000, ls_iterations: int = 5000, acceptance_prob: float = 0.01, tabu_size: int = 10, cp_limit: float = 1.0, empty_factor_init: float = 0.25, alpha: float = 0.99) -> None:
+    def _prepare_final_results(self, start_time, total_iterations, ls_iterations, acceptance_prob, tabu_size, cp_limit, empty_factor_init, alpha):
     
+        end_time = time.time()
+        total_time = end_time - start_time
+        solution_is_valid = self.objective_f() == 0
+
+        results = {
+            'Problem_Size': self.N, 
+            'Total_Iterations': total_iterations,
+            'LS_Iterations': ls_iterations,
+            'Acceptance_Prob': acceptance_prob,
+            'Tabu_Size': tabu_size,
+            'CP_Limit_s': cp_limit,
+            'Empty_Factor_Init': empty_factor_init,
+            'Alpha_Decay': alpha,
+        
+            'Execution_Time_s': total_time,
+            'Best_Cost': self.best_cost,
+            'Solution_Valid': solution_is_valid,
+            'CP_Calls': self.cp_call_count,              
+            'CP_Successes': self.cp_success_count,
+        }
+        return results
+         
+    def solve_ils_cp(self, total_iterations: int = 1000, ls_iterations: int = 5000, acceptance_prob: float = 0.05, tabu_size: int = 10, cp_limit: float = 8.0, empty_factor_init: float = 0.1, alpha: float = 0.99) -> dict:
+    
+        start_time = time.time()
+
+        self.convergence_data = []
+
         if self.current_cost == 0 and self.is_valid():
             print("ILS: Rešenje je pronađeno u inicijalizaciji.")
-            return
+            return self._prepare_final_results(start_time, total_iterations, ls_iterations, acceptance_prob, tabu_size, cp_limit, empty_factor_init, alpha)
 
         self.best_cost = self.current_cost 
         self.best_grid = self.grid.copy()
-        
+
         empty_factor = empty_factor_init
-        
+
         print(f"Hibridni ILS (Početna cena: {self.best_cost})")
 
         for k in range(1, total_iterations + 1):
-            
+    
+            self.total_iterations_run = k
+    
             self.current_cost = self.objective_f()
             self._min_conflicts_with_tabu(ls_iterations, acceptance_prob, tabu_size)
 
             self.current_cost = self.objective_f()
-            
+    
             if self.current_cost == 0:
                 print(f"ILS uspešno rešen u iteraciji {k} nakon LS-a.")
                 self.best_cost = 0  
                 self.best_grid = self.grid.copy() 
-                return 
+                return self._prepare_final_results(start_time, total_iterations, ls_iterations, acceptance_prob, tabu_size, cp_limit, empty_factor_init, alpha)
 
             if self.current_cost < self.best_cost:
                 self.best_cost = self.current_cost
                 self.best_grid = self.grid.copy()
 
             if self.current_cost > self.best_cost:
-                 self.grid = self.best_grid.copy()
-                 self.current_cost = self.best_cost 
-            
-            self.perturb(p_rate=empty_factor, cp_time_limit=cp_limit)
+                self.grid = self.best_grid.copy()
+                self.current_cost = self.best_cost 
+    
+            if self.current_cost > 0:
+                self.cp_call_count += 1
+        
+            cp_improved = self.perturb(p_rate=empty_factor, cp_time_limit=cp_limit)
 
+            if cp_improved:
+                self.cp_success_count += 1
+    
             self.current_cost = self.objective_f() 
-            
+    
             if self.current_cost == 0:
-                print(f"ILS uspešno rešen u iteraciji {k} nakon CP-a.")
+                print(f"ILS uspešno rešen u iteraciji {k} nakon perturbacije/CP-a.")
                 self.best_cost = 0  
                 self.best_grid = self.grid.copy() 
-                return # ZAVRŠI IZAĐI IZ FUNKCIJE
+                return self._prepare_final_results(start_time, total_iterations, ls_iterations, acceptance_prob, tabu_size, cp_limit, empty_factor_init, alpha)
+    
+            if self.current_cost < self.best_cost:
+                self.best_cost = self.current_cost
+                self.best_grid = self.grid.copy()
+
+            current_elapsed_time = time.time() - start_time
             
+            self.convergence_data.append({
+                'k': k,                              
+                'best_cost': self.best_cost,         
+                'time_s': current_elapsed_time      
+                })
+
             empty_factor *= alpha
-            
+    
             print(f"ILS Ciklus {k}/{total_iterations}: Trošak: {self.current_cost}, Najbolji: {self.best_cost}, Faktor kvarenja: {empty_factor:.3f}")
 
             if k % 50 == 0:
                 self.display_grid(f"ILS Stanje nakon {k} ciklusa (Cena: {self.best_cost})")
 
         self.grid = self.best_grid.copy()
-        print(f"ILS završio nakon {total_iterations} iteracija. Najbolja cena: {self.best_cost}")
 
+        end_time = time.time()
+        total_time = end_time - start_time
+        solution_is_valid = self.objective_f() == 0
+
+        print(f"\nILS završio nakon {total_iterations} iteracija. Najbolja cena: {self.best_cost}")
+        print("\n--- ZAVRŠNA STATISTIKA ILS-CP ---")
+        print(f"Najbolja postignuta cena: {self.best_cost}")
+        print(f"Rešenje validno: {solution_is_valid}")
+        print(f"Vreme izvršenja (ILS-CP): {total_time:.4f} sekundi")
+        print(f"CP poziva/uspeha: {self.cp_call_count} / {self.cp_success_count}")
+        print("\n")
+
+        return self._prepare_final_results(start_time, total_iterations, ls_iterations, acceptance_prob, tabu_size, cp_limit, empty_factor_init, alpha)
+    
 class SudokuCP(SudokuSolver):
     def __init__(self, puzzle, seed = None):
         super().__init__(puzzle)
@@ -809,7 +901,6 @@ class SudokuCP(SudokuSolver):
         if fix_noncon:
             for i in range(N):
                 for j in range(N):
-                    # Fiksiramo NE-FIKSIRANE (popunjene Greedyjem) nekonfliktne ćelije
                     if not self.fixed_mask[i, j] and self.grid[i, j] != 0:
                         if self._is_cell_nonconflicting(i, j):
                             model.Add(x[i][j] == int(self.grid[i][j]))
@@ -829,10 +920,8 @@ class SudokuCP(SudokuSolver):
         status = solver.Solve(model)
 
         if status in (OPTIMAL, FEASIBLE):
-            # Citanje rešenja nazad u self.grid
             for i in range(N):
                 for j in range(N):
-                    # Koristimo int() jer solver.Value(x) vraca Python integer (koji je kompatibilan sa numpy int)
                     self.grid[i, j] = int(solver.Value(x[i][j])) 
 
         return status
