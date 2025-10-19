@@ -66,4 +66,22 @@ ID  | Probem_Size  | Total_Iterations| LS_Iterations | Acceptance_Prob | Tabu_Si
 10  | 9            | 50  *           | 2500          | 0.15            | 10         | 15          | 0.2               | 0.995        | 0.6796           | 2         | False          | 50       | 2             | 
 11  | 16           | 50  *           | 2500          | 0.15            | 10         | 15          | 0.2               | 0.995        | 1.6111           | 90        | False          | 50       | 1             | 
 
+Rezultati eksperimenta 4  - Uporedni eksperiment (Verifikacija efikasnosti)
+
+ID  | Kategorija    | SR(%)           |Avg. LS Poteza | Avg. Vreme (s)  | Ukupni uspesi  | Ukupno pokretanja  |
+----|-------------- |-----------------|---------------|-----------------|----------------|--------------------|  
+1   | 5% Fiksirano  | 100.00          | 2000          | 14.04           | 4              | 4                  | 
+2   | 10% Fiksirano | 100.00          | 2000          | 14.38           | 4              | 4                  |
+3   | 15% Fiksirano | 100.00          | 2000          | 14.29           | 4              | 4                  |
+4   | 20% Fiksirano | 100.00          | 2000          | 14.49           | 4              | 4                  |
+5   | 25% Fiksirano | 100.00          | 2000          | 14.48           | 4              | 4                  | 
+6   | 30% Fiksirano | 100.00          | 2000          | 14.43           | 4              | 4                  |
+7   | 40% Fiksirano | 100.00          | 2000          | 14.57           | 4              | 4                  | 
+8   | 50% Fiksirano | 100.00          | 2000          | 14.21           | 4              | 4                  | 
+9   | 60% Fiksirano | 100.00          | 2000          | 14.17           | 4              | 4                  |  
+10  | 70% Fiksirano | 100.00          | 500           | 3.54            | 4              | 4                  | 
+11  | 80% Fiksirano | 100.00          | 0             | 0.00            | 4              | 4                  | 
+12  | 90% Fiksirano | 100.00          | 0             | 0.00            | 4              | 4                  | 
+13  | 100% Fiksirano| 100.00          | 0             | 0.00            | 4              | 4                  | 
+
         
