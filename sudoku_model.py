@@ -6,7 +6,6 @@ from ortools.sat.python.cp_model import OPTIMAL, FEASIBLE
 import random
 import time, math
 
-
 class SudokuSolver:
 
     def __init__(self, puzzle):
